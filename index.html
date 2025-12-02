@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OpenFold3 Pro | Molecular Studio</title>
+    <script src="https://unpkg.com/ngl@next/dist/ngl.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --sidebar-bg: rgba(20, 20, 23, 0.95);
+            --border: rgba(255, 255, 255, 0.15);
+            --accent: #76b900;
+            --accent-hover: #8cd600;
+            --text-main: #ffffff;
+            --text-sec: #a1a1aa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 360px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 20;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+            overflow-y: auto;
+        }
+
+        .brand {
+            font-size: 1.4rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            letter-spacing: -0.02em;
+        }
+        .brand span { color: var(--accent); }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-sec);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .input-group { margin-bottom: 24px; }
+        
+        input, textarea, select {
+            width: 100%;
+            background: #18181b; 
+            border: 1px solid var(--border);
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        /* --- Dropdown Visibility --- */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+        }
+        select option {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 10px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #202023;
+        }
+
+        textarea { resize: vertical; min-height: 80px; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            margin-top: auto;
+        }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-2px); }
+        .btn-primary:disabled { background: #3f3f46; color: #71717a; cursor: not-allowed; transform: none; }
+
+        /* --- VIEWPORT AREA --- */
+        .main-view {
+            flex: 1;
+            position: relative;
+            background-color: #000;
+        }
+
+        #viewport { width: 100%; height: 100%; cursor: move;  }
+
+        /* --- FLOATING TOOLBAR --- */
+        .toolbar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 8px 16px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 50;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid transparent;
+            color: #fff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .tool-btn:hover { background: rgba(255,255,255,0.2); color: var(--accent); }
+
+        /* Tooltips */
+        .tool-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 55px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #000;
+            color: #fff;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s;
+            white-space: nowrap;
+            font-family: 'Inter', sans-serif;
+            border: 1px solid #333;
+        }
+        .tool-btn:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* --- LOADING OVERLAY --- */
+        #loader {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+        }
+        .spinner {
+            width: 60px; height: 60px;
+            border: 4px solid #333;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">
+            <i class="ph-fill ph-dna" style="color:var(--accent)"></i> OpenFold3 <span>PRO</span>
+        </div>
+
+        <div class="section-title">Input Sequences</div>
+        
+        <div class="input-group">
+            <textarea id="seq-protein" placeholder="Paste Protein Sequence (Chain A)">MGREEPLNHVEAERQRREKLNQRFYALRAVVPNVSKMDKASLLGDAIAYINELKSKVVKTESEKLQIKNQLEEVKLELAGRLEHHHHHH</textarea>
+        </div>
+        <div class="input-group">
+            <input type="text" id="seq-dna-b" value="AGGAACACGTGACCC" placeholder="DNA Chain B (Optional)">
+        </div>
+        <div class="input-group">
+            <input type="text" id="seq-dna-c" value="TGGGTCACGTGTTCC" placeholder="DNA Chain C (Optional)">
+        </div>
+
+        <div class="section-title">Visualization Style</div>
+        <div class="input-group">
+            <select id="style-select" onchange="updateStyle()">
+                <option value="cartoon">✨ Cartoon (Standard)</option>
+                <option value="surface">🌑 Molecular Surface</option>
+                <option value="backbone">🦴 Backbone Trace</option>
+                <option value="ballstick">🧪 Ball & Stick</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+             <select id="color-select" onchange="updateStyle()">
+                <option value="chain">🎨 Color by Chain</option>
+                <option value="rainbow">🌈 Rainbow (N to C)</option>
+                <option value="element">⚛️ Color by Element</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" id="generate-btn" onclick="runPrediction()">
+            <i class="ph-bold ph-lightning"></i> RUN PREDICTION
+        </button>
+    </div>
+
+    <div class="main-view">
+        <div id="loader">
+            <div class="spinner"></div>
+            <p style="margin-top:20px; color:#fff; font-weight:600">Generating Structure on NVIDIA H100...</p>
+        </div>
+        
+        <div id="viewport"></div>
+
+        <div class="toolbar">
+            <button class="tool-btn" onclick="resetView()" data-tooltip="Reset View (Fit All)">
+                <i class="ph ph-arrows-out-cardinal"></i>
+            </button>
+            <button class="tool-btn" onclick="toggleSpin()" data-tooltip="Auto-Spin" id="spin-btn">
+                <i class="ph ph-arrows-clockwise"></i>
+            </button>
+            
+            <div style="width:1px; background:rgba(255,255,255,0.2); margin: 0 5px;"></div>
+
+            <button class="tool-btn" onclick="takeScreenshot()" data-tooltip="HD Screenshot">
+                <i class="ph ph-camera"></i>
+            </button>
+            <button class="tool-btn" onclick="downloadPDB()" data-tooltip="Download PDB">
+                <i class="ph ph-download-simple"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let stage;
+        let comp;
+        let isSpinning = false;
+        let pdbData = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Initialize Stage
+            stage = new NGL.Stage("viewport", { 
+                backgroundColor: "#09090b",
+                tooltip: true, 
+                sampleLevel: 2 
+            });
+
+ 
+            stage.mouseControls.remove("scroll"); 
+            stage.mouseControls.remove("pinch"); 
+
+            // High quality rendering
+            stage.setParameters({ impostor: true, quality: "high" });
+
+            window.addEventListener("resize", () => stage.handleResize());
+        });
+
+        // --- INTERACTION FUNCTIONS ---
+
+        function resetView() {
+            // "Fit All" logic
+            stage.autoView(1000); 
+        }
+
+        function toggleSpin() {
+            isSpinning = !isSpinning;
+            stage.setSpin(isSpinning);
+            const btn = document.getElementById('spin-btn');
+            if(isSpinning) {
+                btn.style.color = "var(--accent)";
+                btn.style.borderColor = "var(--accent)";
+            } else {
+                btn.style.color = "";
+                btn.style.borderColor = "";
+            }
+        }
+        
+        function takeScreenshot() {
+            stage.makeImage({ factor: 2, antialias: true, trim: false }).then(function (blob) {
+                NGL.download(blob, "openfold3_snapshot.png");
+            });
+        }
+
+        function downloadPDB() {
+            if(!pdbData) { alert("No structure generated yet."); return; }
+            const blob = new Blob([pdbData], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "structure.pdb";
+            a.click();
+        }
+
+        // --- API FUNCTIONS ---
+        async function runPrediction() {
+            const pSeq = document.getElementById("seq-protein").value;
+            const dB = document.getElementById("seq-dna-b").value;
+            const dC = document.getElementById("seq-dna-c").value;
+
+            if(!pSeq) { alert("Protein sequence required"); return; }
+
+            document.getElementById("loader").style.display = "flex";
+            document.getElementById("generate-btn").disabled = true;
+
+            const msa = `key,sequence\n-1,${pSeq}`;
+
+            const molecules = [{
+                type: "protein", id: "A", sequence: pSeq,
+                msa: { main_db: { csv: { alignment: msa, format: "csv" } } }
+            }];
+            
+            if(dB) molecules.push({ type: "dna", id: "B", sequence: dB });
+            if(dC) molecules.push({ type: "dna", id: "C", sequence: dC });
+
+            const payload = {
+                request_id: "req_" + Date.now(),
+                inputs: [{ input_id: "1", molecules: molecules, output_format: "pdb" }]
+            };
+
+            try {
+                const res = await fetch("/predict", {
+                    method: "POST", headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if(data.error) throw new Error(data.error);
+                
+                pdbData = data.pdb;
+                loadStructure(data.pdb);
+
+            } catch(e) {
+                alert("Error: " + e.message);
+                console.error(e);
+            } finally {
+                document.getElementById("loader").style.display = "none";
+                document.getElementById("generate-btn").disabled = false;
+            }
+        }
+
+        function loadStructure(pdbStr) {
+            stage.removeAllComponents();
+            const blob = new Blob([pdbStr], {type:'text/plain'});
+            
+            stage.loadFile(blob, { ext: 'pdb' }).then(c => {
+                comp = c;
+                updateStyle();
+                stage.autoView();
+            });
+        }
+
+        function updateStyle() {
+            if(!comp) return;
+            comp.removeAllRepresentations();
+            
+            const style = document.getElementById("style-select").value;
+            const colorMode = document.getElementById("color-select").value;
+
+            let colorScheme = "chainname"; 
+            if(colorMode === "rainbow") colorScheme = "residueindex";
+            if(colorMode === "element") colorScheme = "element";
+
+            if (style === "cartoon") {
+                comp.addRepresentation("cartoon", { sele: "protein", colorScheme: colorScheme, quality: "high", smoothSheet: true });
+                comp.addRepresentation("cartoon", { sele: "dna", color: "orange", aspectRatio: 1.2 });
+                comp.addRepresentation("base", { sele: "dna", color: "element" });
+            } 
+            else if (style === "surface") {
+                comp.addRepresentation("surface", { sele: "all", colorScheme: colorScheme, opacity: 0.8, useWorker: true, side: "front" });
+            }
+            else if (style === "backbone") {
+                comp.addRepresentation("backbone", { colorScheme: colorScheme, radius: 0.5 });
+            }
+            else if (style === "ballstick") {
+                comp.addRepresentation("ball+stick", { colorScheme: colorScheme });
+            }
+        }
+    </script>
+</body>
+</html>
